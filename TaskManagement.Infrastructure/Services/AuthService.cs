@@ -4,7 +4,6 @@ using TaskManagement.Application.DTOs.Auth;
 using TaskManagement.Application.Interfaces;
 using TaskManagement.Domain.Entities;
 using TaskManagement.Domain.Interfaces;
-using BCrypt.Net;
 
 namespace TaskManagement.Infrastructure.Services;
 
@@ -41,7 +40,7 @@ public class AuthService : IAuthService
         };
 
         await _userRepository.AddAsync(user);
-        await SaveChanges();
+        await _userRepository.SaveChangesAsync();
 
         var token = _jwtService.GenerateToken(user.Id, user.Email, user.Role);
         var expiresAt = _jwtService.GetTokenExpiration();
@@ -73,10 +72,5 @@ public class AuthService : IAuthService
             FullName = $"{user.FirstName} {user.LastName}",
             ExpiresAt = expiresAt
         };
-    }
-
-    private async Task SaveChanges()
-    {
-        await Task.CompletedTask;
     }
 }

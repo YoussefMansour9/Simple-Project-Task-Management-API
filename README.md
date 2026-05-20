@@ -12,6 +12,7 @@ A simple, scalable backend system for Project & Task Management built with ASP.N
 - **Redis Caching**: Optional Redis support for caching
 - **Docker Support**: Ready for containerized deployment
 - **Unit Tests**: Comprehensive unit tests with xUnit
+- **Database Migrations**: Entity Framework Core migrations included
 
 ## Tech Stack
 
@@ -31,10 +32,10 @@ A simple, scalable backend system for Project & Task Management built with ASP.N
 ```
 TaskManagement.slnx
 ├── TaskManagement.Domain/          # Domain layer - Entities, Enums, Interfaces
-├── TaskManagement.Application/     # Application layer - DTOs, Commands, Queries, Handlers
-├── TaskManagement.Infrastructure/  # Infrastructure layer - EF Core, JWT, Redis, Services
-├── TaskManagement.Api/            # API layer - Controllers, Middleware, Configuration
-└── TaskManagement.Tests/          # Unit tests
+├── TaskManagement.Application/      # Application layer - DTOs, Commands, Queries, Handlers
+├── TaskManagement.Infrastructure/   # Infrastructure layer - EF Core, JWT, Redis, Services
+├── TaskManagement.Api/             # API layer - Controllers, Middleware, Configuration
+└── TaskManagement.Tests/           # Unit tests
 ```
 
 ### Key Principles
@@ -49,25 +50,38 @@ TaskManagement.slnx
 ### Prerequisites
 
 - .NET 9 SDK
-- SQL Server (or Docker)
-- Redis (optional)
+- Docker & Docker Compose (for containerized setup)
+- SQL Server (or use Docker)
+
+### Running with Docker
+
+1. **Start all services**
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Access the API**: `http://localhost:8080/swagger`
+   - API is pre-built and running
+   - SQL Server available at localhost:1433
+   - Redis available at localhost:6379
+
+3. **Run database migrations** (if needed)
+   ```bash
+   docker exec -it technicaltest-api-1 dotnet ef database update
+   ```
+   Note: Database is automatically created on first run via EnsureCreated()
 
 ### Running Locally
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
-   cd TaskManagement
+   git clone https://github.com/YoussefMansour9/Simple-Project-Task-Management-API.git
+   cd Simple-Project-Task-Management-API
    ```
 
-2. **Update connection strings** in `TaskManagement.Api/appsettings.json`
-   ```json
-   {
-     "ConnectionStrings": {
-       "DefaultConnection": "Server=localhost;Database=TaskManagementDb;Trusted_Connection=True;TrustServerCertificate=True",
-       "RedisConnection": "localhost:6379"
-     }
-   }
+2. **Start Docker services** (SQL Server & Redis)
+   ```bash
+   docker-compose up -d db redis
    ```
 
 3. **Run the application**
@@ -78,20 +92,26 @@ TaskManagement.slnx
 
 4. **Access Swagger UI**: `http://localhost:5000/swagger`
 
-### Running with Docker
-
-1. **Start all services**
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Access the API**: `http://localhost:8080/swagger`
-
 ### Running Tests
 
 ```bash
 cd TaskManagement.Tests
 dotnet test
+```
+
+## Database Migrations
+
+Migrations are located in: `TaskManagement.Api/Data/Migrations/`
+
+To create new migrations:
+```bash
+cd TaskManagement.Api
+dotnet ef migrations add <MigrationName> --output-dir Data/Migrations
+```
+
+To apply migrations:
+```bash
+dotnet ef database update
 ```
 
 ## API Endpoints
@@ -129,129 +149,50 @@ dotnet test
 
 ### Register User
 
-**Request:**
-```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "firstName": "John",
-  "lastName": "Doe",
-  "email": "john@example.com",
-  "password": "Password123"
-}
+```bash
+curl -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"firstName":"John","lastName":"Doe","email":"john@example.com","password":"Password123"}'
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Registration successful",
-  "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-    "email": "john@example.com",
-    "fullName": "John Doe",
-    "expiresAt": "2024-01-01T12:00:00Z"
-  }
-}
+### Login
+
+```bash
+curl -X POST http://localhost:8080/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","password":"Password123"}'
 ```
 
-### Create Project
+### Create Project (requires token)
 
-**Request:**
-```http
-POST /api/projects
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "name": "My Project",
-  "description": "Project description"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Project created successfully",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "name": "My Project",
-    "description": "Project description",
-    "createdAt": "2024-01-01T00:00:00Z",
-    "taskCount": 0
-  }
-}
+```bash
+curl -X POST http://localhost:8080/api/projects \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"My Project","description":"Description"}'
 ```
 
 ### Create Task
 
-**Request:**
-```http
-POST /api/tasks
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "title": "New Task",
-  "description": "Task description",
-  "priority": "High",
-  "projectId": "550e8400-e29b-41d4-a716-446655440000",
-  "dueDate": "2024-12-31T23:59:59Z"
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Task created successfully",
-  "data": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "title": "New Task",
-    "description": "Task description",
-    "status": "Todo",
-    "priority": "High",
-    "projectId": "550e8400-e29b-41d4-a716-446655440000",
-    "projectName": "My Project",
-    "createdAt": "2024-01-01T00:00:00Z"
-  }
-}
-```
-
-## Project Structure
-
-```
-TaskManagement/
-├── src/
-│   ├── TaskManagement.Domain/
-│   │   ├── Common/
-│   │   ├── Entities/
-│   │   ├── Enums/
-│   │   └── Interfaces/
-│   ├── TaskManagement.Application/
-│   │   ├── Common/
-│   │   ├── DTOs/
-│   │   ├── Features/
-│   │   ├── Interfaces/
-│   │   └── Mappings/
-│   ├── TaskManagement.Infrastructure/
-│   │   ├── Data/
-│   │   ├── Repositories/
-│   │   └── Services/
-│   └── TaskManagement.Api/
-│       ├── Controllers/
-│       ├── Extensions/
-│       └── Middleware/
-├── tests/
-│   └── TaskManagement.Tests/
-├── Dockerfile
-├── docker-compose.yml
-└── README.md
+```bash
+curl -X POST http://localhost:8080/api/tasks \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Task Title","description":"Description","priority":"High","projectId":"<project-id>"}'
 ```
 
 ## Configuration
+
+### Connection Strings
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=TaskManagementDb;User=sa;Password=YourPassword123;TrustServerCertificate=True",
+    "RedisConnection": "localhost:6379"
+  }
+}
+```
 
 ### JWT Settings
 
@@ -266,9 +207,37 @@ TaskManagement/
 }
 ```
 
-### Redis (Optional)
+## Project Structure
 
-For production, Redis connection is configured via `ConnectionStrings:RedisConnection`.
+```
+TaskManagement/
+├── TaskManagement.Domain/
+│   ├── Common/
+│   ├── Entities/
+│   ├── Enums/
+│   └── Interfaces/
+├── TaskManagement.Application/
+│   ├── Common/
+│   ├── DTOs/
+│   ├── Features/
+│   ├── Interfaces/
+│   └── Mappings/
+├── TaskManagement.Infrastructure/
+│   ├── Data/
+│   ├── Repositories/
+│   └── Services/
+├── TaskManagement.Api/
+│   ├── Controllers/
+│   ├── Data/Migrations/
+│   ├── Extensions/
+│   ├── Middleware/
+│   └── Program.cs
+├── TaskManagement.Tests/
+├── Dockerfile
+├── docker-compose.yml
+├── TaskManagement.postman_collection.json
+└── README.md
+```
 
 ## Error Handling
 
@@ -294,14 +263,13 @@ All errors return a consistent format:
 - `Medium`
 - `High`
 
-## Contributing
+## Important Notes
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Open a pull request
+1. **Database Password**: Default password is `YourPassword123` (change in production)
+2. **JWT Secret**: Default secret key should be replaced with a secure value in production
+3. **CORS**: Currently configured to allow all origins (configure for production)
+4. **Data Persistence**: Docker volumes are used for SQL Server and Redis data persistence
 
 ## License
 
-This project is licensed under the MIT License.
+MIT License
